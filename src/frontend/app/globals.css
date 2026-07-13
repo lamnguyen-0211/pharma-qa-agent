@@ -1,0 +1,13 @@
+:root { --ink: #162525; --muted: #637474; --mint: #dcefe7; --accent: #0b7565; --paper: #f5f8f4; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: Arial, sans-serif; }
+.shell { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: 100px 0 60px; }
+.eyebrow { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .13em; }
+h1 { font-size: clamp(46px, 9vw, 84px); line-height: .98; letter-spacing: -.06em; margin: 26px 0 22px; }
+h1 span { color: var(--accent); }
+.intro { color: var(--muted); font-size: 18px; line-height: 1.55; max-width: 570px; }
+.card { background: white; border: 1px solid #dce7e1; border-radius: 20px; box-shadow: 0 18px 55px #193d3212; margin-top: 44px; padding: 28px; }
+.status { color: var(--accent); font-size: 13px; font-weight: 700; margin-bottom: 32px; }.status span { background: #42b884; border-radius: 50%; display: inline-block; height: 8px; margin-right: 8px; width: 8px; }
+label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 10px; } textarea { border: 1px solid #cfddd6; border-radius: 10px; display: block; font: inherit; min-height: 120px; padding: 14px; resize: vertical; width: 100%; } textarea:focus { border-color: var(--accent); outline: 2px solid var(--mint); }
+button { background: var(--accent); border: 0; border-radius: 9px; color: white; cursor: pointer; font-weight: 700; margin-top: 14px; padding: 13px 18px; } button:disabled { cursor: not-allowed; opacity: .5; }
+.answer { background: #f1f8f4; border-radius: 10px; margin-top: 24px; padding: 18px; }.answer p { line-height: 1.55; margin: 8px 0 0; }.notice { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 18px 4px; }
