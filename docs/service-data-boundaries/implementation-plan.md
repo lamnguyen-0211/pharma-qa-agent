@@ -394,7 +394,7 @@ git diff --check
 
 Expected: frontend and AI checks pass; Spring Boot either passes or reports the known missing toolchain; Compose and whitespace checks pass.
 
-- [ ] **Step 5: Review, stage, and commit only task files**
+- [x] **Step 5: Review, stage, and commit only project task files**
 
 Run `git diff --stat`, `git diff`, and `git status --short`. Confirm unrelated pre-existing changes are not included. Confirm the branch with `git branch --show-current`, then stage the task files and commit with:
 
@@ -403,7 +403,7 @@ git add AGENTS.md docs/service-data-boundaries src/backend src/ai-backend docker
 git commit -m "refactor: isolate AI and core persistence"
 ```
 
-- [ ] **Step 6: Push and verify**
+- [x] **Step 6: Push and verify**
 
 Run:
 
