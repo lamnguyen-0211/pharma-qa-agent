@@ -1,8 +1,10 @@
 export type RiskLevel = "low" | "medium" | "high" | "emergency";
 
 export type AssistantResponse = {
+  businessSessionId: string;
+  chatSessionId: string;
   answer: string;
-  riskLevel: RiskLevel;
+  risk_level: RiskLevel;
   citations: string[];
-  traceId?: string;
+  trace_id?: string;
 };

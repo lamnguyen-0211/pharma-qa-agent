@@ -1,0 +1,17 @@
+.git
+.next
+src/frontend/.next
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+.swc
+.pytest_cache
+src/ai-backend/.venv
+src/ai-backend/__pycache__
+src/ai-backend/app/__pycache__
+src/ai-backend/.pytest_cache
+src/backend/target
+*.pyc
+*.tsbuildinfo

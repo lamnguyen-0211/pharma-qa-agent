@@ -1,23 +1,17 @@
-CREATE TABLE conversation (
+CREATE TABLE app_user (
   id VARCHAR(36) PRIMARY KEY,
+  external_subject VARCHAR(255) NOT NULL UNIQUE,
+  display_name VARCHAR(255) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE message (
+
+CREATE TABLE business_session (
   id VARCHAR(36) PRIMARY KEY,
-  conversation_id VARCHAR(36) NOT NULL REFERENCES conversation(id) ON DELETE CASCADE,
-  role VARCHAR(16) NOT NULL CHECK (role IN ('USER', 'ASSISTANT', 'SYSTEM')),
-  content TEXT NOT NULL,
-  risk_level VARCHAR(16) NOT NULL DEFAULT 'LOW' CHECK (risk_level IN ('LOW', 'MEDIUM', 'HIGH', 'EMERGENCY')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  user_id VARCHAR(36) NOT NULL REFERENCES app_user(id),
+  status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'CLOSED')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX message_conversation_created_idx ON message (conversation_id, created_at);
-CREATE TABLE audit_event (
-  id VARCHAR(36) PRIMARY KEY,
-  conversation_id VARCHAR(36) REFERENCES conversation(id) ON DELETE SET NULL,
-  event_type VARCHAR(64) NOT NULL,
-  trace_id VARCHAR(36),
-  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX audit_event_conversation_created_idx ON audit_event (conversation_id, created_at);
+
+CREATE INDEX business_session_user_created_idx ON business_session (user_id, created_at);

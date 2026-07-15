@@ -13,26 +13,33 @@ Next.js web app :3000
   | POST /api/chat
   v
 Spring Boot core API :8080
+  |                         \
+  |                          v
+  |                    Core PostgreSQL
+  |                    app_user,
+  |                    business_session
   |
   | POST /v1/chat
   v
 Python Pharma AI service :8000
   |
-  v
-Controlled safety workflow
+  +--> AI PostgreSQL
+       chat_session, chat_message,
+       providers, models, prompts
 ```
 
-The frontend never calls an LLM provider directly. The Spring Boot service owns conversation persistence and audit events, while the Python service owns risk classification and response policy.
+The frontend never calls an LLM provider directly. Spring Boot owns users and business sessions, while Python owns all AI state, risk classification, and response policy. Spring Boot treats `chatSessionId` as opaque.
 
 ## Current capabilities
 
 - Next.js, React, and TypeScript assistant interface.
 - Validated `POST /api/chat` gateway with a 1–4,000 character question limit.
-- Spring Boot conversation and message API with Flyway-managed PostgreSQL tables.
+- Spring Boot user and business-session API with Flyway-managed core PostgreSQL tables.
 - Python/FastAPI health and chat endpoints.
+- AI-owned PostgreSQL persistence for chat sessions and messages, with provider/model and versioned-prompt tables.
 - Deterministic handling for emergency and high-risk questions, including overdose, breathing difficulty, dosage, pregnancy, side effects, contraindications, and adverse events.
 - Trace IDs for AI-service responses and audit-oriented metadata.
-- Prisma schema for conversation and message data.
+- Separate core and AI PostgreSQL database configuration.
 
 ## Safety status
 
@@ -69,12 +76,30 @@ uvicorn app.main:app --reload --port 8000
 
 The Spring Boot core API requires Java 21, Maven, and PostgreSQL. Copy `.env.example` to configure local service URLs and database access.
 
+## Run with Docker Compose
+
+Docker Compose provisions separate core and AI PostgreSQL databases, the Redis cache service reserved by the recommended architecture, and the three application services:
+
+```bash
+docker compose up --build
+```
+
+The frontend is available at `http://localhost:3000`. Core PostgreSQL is exposed on `localhost:5432`, AI PostgreSQL on `localhost:5433`, and Redis on `localhost:6379`. Flyway creates only core tables; the AI service applies its own schema to the AI database.
+
+To start only the data services:
+
+```bash
+docker compose up core-postgres ai-postgres redis
+```
+
+Stop the stack with `docker compose down`. Add `-v` only when the local PostgreSQL and Redis data volumes should also be removed.
+
 ## Project layout
 
 - `src/frontend/` — Next.js application and `/api/chat` gateway.
-- `src/backend/` — Spring Boot core API, persistence, and audit workflow.
+- `src/backend/` — Spring Boot core API, business persistence, and chat relay.
 - `src/ai-backend/` — Python/FastAPI safety workflow and provider boundary.
-- `prisma/schema.prisma` — Prisma data model for conversations and messages.
+- `src/ai-backend/migrations/` — AI-owned PostgreSQL schema.
 - `docs/IMPLEMENTED_SERVICES.md` — detailed service, endpoint, and verification notes.
 
 ## Verification

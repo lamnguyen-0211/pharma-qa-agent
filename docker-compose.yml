@@ -1,0 +1,110 @@
+services:
+  core-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${CORE_POSTGRES_DB:-pharma_core}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${CORE_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - core_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  ai-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${AI_POSTGRES_DB:-pharma_ai}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${AI_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - ai_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  ai-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ai-backend
+    ports:
+      - "${AI_BACKEND_PORT:-8000}:8000"
+    environment:
+      AI_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@ai-postgres:5432/${AI_POSTGRES_DB:-pharma_ai}
+    depends_on:
+      ai-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  core-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: core-api
+    environment:
+      CORE_DATABASE_URL: jdbc:postgresql://core-postgres:5432/${CORE_POSTGRES_DB:-pharma_core}
+      DATABASE_USERNAME: ${POSTGRES_USER:-postgres}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      AI_BACKEND_URL: http://ai-backend:8000
+    ports:
+      - "${CORE_API_PORT:-8080}:8080"
+    depends_on:
+      core-postgres:
+        condition: service_healthy
+      ai-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8080/actuator/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend
+    environment:
+      CORE_API_URL: http://core-api:8080
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      core-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  core_postgres_data:
+  ai_postgres_data:
+  redis_data:

@@ -7,9 +7,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
-    @ExceptionHandler(org.springframework.dao.EmptyResultDataAccessException.class)
+    @ExceptionHandler(BusinessSessionNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ErrorResponse notFound(Exception ignored) { return new ErrorResponse("Conversation not found."); }
+    public ErrorResponse businessSessionNotFound(BusinessSessionNotFoundException ignored) {
+        return new ErrorResponse("Business session not found.");
+    }
 
     @ExceptionHandler({IllegalStateException.class, org.springframework.web.client.RestClientException.class})
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
