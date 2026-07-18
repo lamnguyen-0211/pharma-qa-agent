@@ -27,7 +27,7 @@ FROM maven:3.9.9-eclipse-temurin-21 AS core-api-builder
 WORKDIR /app
 COPY src/backend/pom.xml ./pom.xml
 COPY src/backend/src ./src
-RUN mvn -B package -DskipTests
+RUN mvn -B package
 
 FROM eclipse-temurin:21-jre AS core-api
 WORKDIR /app
