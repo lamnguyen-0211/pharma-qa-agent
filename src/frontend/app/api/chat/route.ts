@@ -4,6 +4,7 @@ const requestSchema = z.object({
   businessSessionId: z.string().trim().min(1).max(36),
   chatSessionId: z.string().trim().min(1).max(36).nullable().optional(),
   question: z.string().trim().min(1).max(4000),
+  useKnowledgeBase: z.boolean().default(true),
 });
 const backendUrl = process.env.CORE_API_URL ?? "http://127.0.0.1:8080";
 
