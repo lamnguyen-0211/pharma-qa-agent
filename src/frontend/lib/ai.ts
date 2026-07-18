@@ -8,6 +8,28 @@ export type Citation = {
   chunkId: string;
 };
 
+export type KnowledgeDocument = {
+  documentId: string;
+  originalFilename: string;
+  title: string;
+  documentType: string;
+  product?: string | null;
+  activeIngredient?: string | null;
+  market?: string | null;
+  jurisdiction?: string | null;
+  language: string;
+  effectiveDate?: string | null;
+  expirationDate?: string | null;
+  version: string;
+  approvalStatus: string;
+  audience?: string | null;
+  accessClassification: string;
+  embeddingModelName: string;
+  embeddingDimension: number;
+  chunkCount: number;
+  createdAt: string;
+};
+
 export type AssistantResponse = {
   businessSessionId: string;
   chatSessionId: string;

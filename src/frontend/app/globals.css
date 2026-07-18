@@ -27,11 +27,11 @@ body {
   font-family: Arial, sans-serif;
 }
 
-button, textarea { font: inherit; }
+button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 
-button:focus-visible, textarea:focus-visible {
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
   outline: 3px solid var(--mint);
   outline-offset: 2px;
 }
@@ -105,6 +105,9 @@ button:focus-visible, textarea:focus-visible {
   padding: 11px 10px;
 }
 .thread-icon { color: var(--accent); font-size: 20px; }
+.knowledge-nav-link { align-items: center; border: 1px solid transparent; border-radius: 8px; color: var(--navy); display: flex; font-size: 12px; font-weight: 700; gap: 9px; padding: 10px; text-decoration: none; }
+.knowledge-nav-link span { color: var(--accent); font-size: 16px; }
+.knowledge-nav-link:hover { background: var(--mint-soft); border-color: var(--line); }
 .sidebar-footer { border-top: 1px solid var(--line); margin-top: auto; padding-top: 20px; }
 .session-status { color: var(--navy); font-size: 12px; gap: 8px; margin-top: 10px; }
 .status-dot { background: #42b884; border-radius: 50%; display: inline-block; height: 7px; width: 7px; }
@@ -184,6 +187,44 @@ button:focus-visible, textarea:focus-visible {
 .safety-panel.risk-warning .risk-state { background: var(--warning-soft); }
 .safety-panel.risk-warning .risk-state strong { color: var(--warning); }
 
+.knowledge-workspace { margin: 0 auto; max-width: 1280px; padding: 42px clamp(20px, 5vw, 64px) 64px; }
+.knowledge-header { align-items: flex-start; display: flex; justify-content: space-between; }
+.knowledge-header h1 { color: var(--navy); font-size: 32px; letter-spacing: -.05em; margin: 10px 0 7px; }
+.knowledge-header p:not(.eyebrow) { color: var(--muted); font-size: 13px; margin: 0; }
+.back-link { border: 1px solid var(--line-strong); border-radius: 8px; color: var(--accent-dark); font-size: 12px; font-weight: 700; padding: 9px 12px; text-decoration: none; }
+.back-link:hover { border-color: var(--accent); }
+.knowledge-warning { background: var(--warning-soft); border: 1px solid #f0d2c1; border-radius: 10px; color: var(--warning); display: flex; flex-direction: column; font-size: 12px; gap: 4px; margin-top: 24px; padding: 12px 14px; }
+.knowledge-alert { border-radius: 9px; font-size: 12px; margin-top: 14px; padding: 11px 14px; }
+.knowledge-alert.is-error { background: var(--warning-soft); border: 1px solid #f0d2c1; color: var(--warning); }
+.knowledge-alert.is-success { background: var(--mint); border: 1px solid var(--line-strong); color: var(--accent-dark); }
+.knowledge-grid { align-items: start; display: grid; gap: 24px; grid-template-columns: minmax(0, 1.05fr) minmax(340px, .95fr); margin-top: 24px; }
+.knowledge-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 24px; }
+.knowledge-card h2 { color: var(--navy); font-size: 18px; margin: 0; }
+.knowledge-card > p, .document-heading p { color: var(--muted); font-size: 11px; margin: 7px 0 0; }
+.knowledge-form { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 22px; }
+.knowledge-form label { color: var(--navy); display: flex; flex-direction: column; font-size: 11px; font-weight: 700; gap: 7px; }
+.knowledge-form input, .knowledge-form select { background: white; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--ink); min-width: 0; padding: 9px 10px; }
+.knowledge-form input[type="file"] { color: var(--muted); padding: 7px; }
+.full-field { grid-column: 1 / -1; }
+.upload-button { background: var(--accent); border: 0; border-radius: 8px; color: white; font-size: 12px; font-weight: 700; margin-top: 4px; padding: 11px 14px; }
+.upload-button:hover:not(:disabled) { background: var(--accent-dark); }
+.upload-button:disabled { opacity: .5; }
+.document-heading { align-items: center; display: flex; justify-content: space-between; }
+.document-heading > span { align-items: center; background: var(--mint); border-radius: 999px; color: var(--accent-dark); display: flex; font-size: 11px; font-weight: 700; height: 28px; justify-content: center; min-width: 28px; padding: 0 8px; }
+.document-empty { border: 1px dashed var(--line-strong); border-radius: 9px; margin-top: 22px !important; padding: 32px 16px; text-align: center; }
+.document-list { display: flex; flex-direction: column; gap: 10px; list-style: none; margin: 20px 0 0; padding: 0; }
+.document-list li { border: 1px solid var(--line); border-radius: 9px; padding: 13px; }
+.document-list li > div:first-child { display: flex; flex-direction: column; gap: 4px; }
+.document-list strong { color: var(--navy); font-size: 12px; }
+.document-list li > div:first-child span, .document-list li > p { color: var(--muted); font-size: 10px; }
+.document-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.document-tags span { background: var(--mint-soft); border-radius: 999px; color: var(--accent-dark); font-size: 9px; font-weight: 700; padding: 5px 7px; }
+.document-list li > p { border-top: 1px solid var(--line); line-height: 1.45; margin: 11px 0 0; padding-top: 9px; }
+
+@media (max-width: 900px) {
+  .knowledge-grid { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 1100px) {
   .app-shell { grid-template-columns: 220px minmax(0, 1fr); }
   .safety-panel { border-left: 0; border-top: 1px solid var(--line); bottom: 0; display: block; grid-column: 1 / -1; padding: 12px 24px; }
@@ -200,6 +241,7 @@ button:focus-visible, textarea:focus-visible {
   .new-conversation { grid-column: 2; width: auto; }
   .new-conversation span { font-size: 18px; }
   .sidebar-section { display: none; }
+  .knowledge-nav-link { grid-column: 1 / -1; margin-top: 12px; }
   .sidebar-footer { border: 0; grid-column: 1 / -1; margin: 14px 0 0; padding: 0; }
   .sidebar-footer .sidebar-label, .session-help { display: none; }
   .session-status { margin-top: 0; }
@@ -217,6 +259,11 @@ button:focus-visible, textarea:focus-visible {
   .message-bubble { max-width: 88%; }
   .mobile-safety { display: block; }
   .safety-panel { padding: 11px 18px; }
+  .knowledge-workspace { padding: 26px 14px 42px; }
+  .knowledge-header { gap: 16px; }
+  .knowledge-header h1 { font-size: 27px; }
+  .knowledge-form { grid-template-columns: 1fr; }
+  .full-field { grid-column: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

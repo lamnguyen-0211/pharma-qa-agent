@@ -40,6 +40,7 @@ describe("Pharma Manager chat workspace", () => {
 
     render(<Home />);
 
+    expect(screen.getByRole("link", { name: "Knowledge base" })).toHaveAttribute("href", "/knowledge");
     const sendButton = screen.getByRole("button", { name: "Send message" });
     expect(sendButton).toBeDisabled();
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Ask the assistant" })).toBeEnabled());

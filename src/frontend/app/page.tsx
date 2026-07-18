@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 import type { Citation } from "../lib/ai";
 
@@ -210,6 +211,11 @@ export default function Home() {
             <span>{messages.length ? "Untitled conversation" : "New conversation"}</span>
           </div>
         </div>
+
+        <Link className="knowledge-nav-link" href="/knowledge">
+          <span aria-hidden="true">◇</span>
+          Knowledge base
+        </Link>
 
         <div className="sidebar-footer">
           <p className="sidebar-label">Session status</p>
