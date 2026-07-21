@@ -11,8 +11,13 @@ import java.util.UUID;
 
 @Service
 public class BusinessSessionService {
-    private static final String INSERT_USER =
-            "INSERT INTO app_user (id, external_subject, display_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)";
+    private static final String UPSERT_USER = """
+            INSERT INTO app_user (id, external_subject, display_name, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (external_subject) DO UPDATE
+            SET display_name = EXCLUDED.display_name, updated_at = EXCLUDED.updated_at
+            RETURNING id, external_subject, display_name, created_at, updated_at
+            """;
     private static final String USER_EXISTS = "SELECT EXISTS(SELECT 1 FROM app_user WHERE id = ?)";
     private static final String INSERT_SESSION =
             "INSERT INTO business_session (id, user_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)";
@@ -29,8 +34,13 @@ public class BusinessSessionService {
     public UserResponse createUser(UserRequest request) {
         String id = UUID.randomUUID().toString();
         OffsetDateTime now = OffsetDateTime.now();
-        jdbc.update(INSERT_USER, id, request.externalSubject(), request.displayName(), now, now);
-        return new UserResponse(id, request.externalSubject(), request.displayName(), now, now);
+        return jdbc.queryForObject(UPSERT_USER, (rs, rowNum) -> new UserResponse(
+                rs.getString("id"),
+                rs.getString("external_subject"),
+                rs.getString("display_name"),
+                rs.getObject("created_at", OffsetDateTime.class),
+                rs.getObject("updated_at", OffsetDateTime.class)),
+                id, request.externalSubject(), request.displayName(), now, now);
     }
 
     @Transactional
