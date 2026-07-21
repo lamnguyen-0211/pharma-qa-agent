@@ -1,7 +1,14 @@
 package com.pharmamanager.core.ai;
 
+import com.pharmamanager.core.api.ChatRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import com.sun.net.httpserver.HttpServer;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicReference;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.http.HttpMethod;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.util.LinkedMultiValueMap;
@@ -18,6 +25,14 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 class AiClientTest {
     private AiClient client;
     private MockRestServiceServer server;
+
+    @Test
+    void springCreatesClientUsingConfiguredBackendUrl() {
+        new ApplicationContextRunner()
+                .withPropertyValues("ai.backend-url=http://ai.test")
+                .withBean(AiClient.class)
+                .run(context -> assertThat(context).hasSingleBean(AiClient.class));
+    }
 
     @BeforeEach
     void setUp() {
@@ -62,5 +77,40 @@ class AiClientTest {
 
         assertThat(response.get(0).get("title").asText()).isEqualTo("Approved Label");
         server.verify();
+    }
+
+    @Test
+    @Timeout(10)
+    void chatUsesHttp11AndWritesJsonBody() throws Exception {
+        var requestBody = new AtomicReference<String>();
+        var upgradeHeader = new AtomicReference<String>();
+        var httpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        httpServer.createContext("/v1/chat", exchange -> {
+            requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            upgradeHeader.set(exchange.getRequestHeaders().getFirst("Upgrade"));
+            var response = "{\"answer\":\"ok\"}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length);
+            try (var output = exchange.getResponseBody()) {
+                output.write(response);
+            }
+        });
+        httpServer.setExecutor(command -> {
+            var thread = new Thread(command);
+            thread.setDaemon(true);
+            thread.start();
+        });
+        httpServer.start();
+
+        try {
+            var realClient = new AiClient("http://127.0.0.1:" + httpServer.getAddress().getPort());
+            realClient.chat(new ChatRequest("business-1", null, "What is this?", false));
+        } finally {
+            httpServer.stop(0);
+        }
+
+        assertThat(upgradeHeader.get()).isNull();
+        assertThat(requestBody.get()).contains("\"businessSessionId\":\"business-1\"");
+        assertThat(requestBody.get()).contains("\"question\":\"What is this?\"");
     }
 }

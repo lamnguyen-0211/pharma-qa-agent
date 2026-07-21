@@ -2,11 +2,13 @@ package com.pharmamanager.core.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.pharmamanager.core.api.ChatRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -16,7 +18,13 @@ import org.springframework.web.client.RestClient;
 public class AiClient {
     private final RestClient client;
 
-    public AiClient(@Value("${ai.backend-url}") String backendUrl) { this.client = RestClient.builder().baseUrl(backendUrl).build(); }
+    @Autowired
+    public AiClient(@Value("${ai.backend-url}") String backendUrl) {
+        this.client = RestClient.builder()
+                .requestFactory(new SimpleClientHttpRequestFactory())
+                .baseUrl(backendUrl)
+                .build();
+    }
 
     AiClient(RestClient client) {
         this.client = client;

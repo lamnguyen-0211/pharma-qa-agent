@@ -14,6 +14,7 @@ from .knowledge import (
 from .models import ChatRequest, ChatResponse, KnowledgeDocument
 from .providers import (
     GeminiChatProvider,
+    GoogleEmbeddingProvider,
     ModelProviderError,
     SentenceTransformerEmbeddingProvider,
 )
@@ -38,10 +39,20 @@ def create_app(
             settings = Settings.from_env()
             store = PostgresAiStore(settings.ai_database_url)
             store.initialize_schema()
-            embedder = SentenceTransformerEmbeddingProvider(
-                settings.embedding_model_name,
-                settings.embedding_dimension,
-            )
+            print("dimension", settings.embedding_dimension)
+            if settings.embedding_type != "sentence-transformers":
+                embedder = GoogleEmbeddingProvider(
+                    api_key=settings.gemini_api_key,
+                    model_name=settings.embedding_model_name,
+                    output_dimensionality=settings.embedding_dimension,
+                )
+
+            else:
+                embedder = SentenceTransformerEmbeddingProvider(
+                    model_name=settings.embedding_model_name,
+                    expected_dimension=settings.embedding_dimension,
+                )
+
             retriever = PostgresKnowledgeRetriever(
                 store,
                 embedder,
@@ -152,17 +163,17 @@ def create_app(
         except DuplicateDocumentError as error:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Document content already exists.",
+                detail=error,
             ) from error
         except (KnowledgeValidationError, ValidationError) as error:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Document upload is invalid.",
+                detail=error,
             ) from error
         except (EmbeddingConfigurationError, AiPersistenceError) as error:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Knowledge indexing is unavailable.",
+                detail=error,
             ) from error
         finally:
             await file.close()

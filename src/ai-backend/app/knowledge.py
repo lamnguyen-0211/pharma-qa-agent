@@ -11,6 +11,7 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .providers import EmbeddingProvider
+from .models import KnowledgeDocument
 
 DEFAULT_MAX_BYTES = 10_485_760
 CHUNK_SIZE = 1_200
@@ -77,7 +78,9 @@ class DocumentStore(Protocol):
         embeddings: list[list[float]],
         model_name: str,
         dimension: int,
-    ): ...
+    ) -> KnowledgeDocument:
+        """Persist a document and return the stored document."""
+        ...
 
 
 def _normalized(text: str) -> str:

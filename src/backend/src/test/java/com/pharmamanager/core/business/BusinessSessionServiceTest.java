@@ -73,13 +73,13 @@ class BusinessSessionServiceTest {
         assertThat(firstResponse).isEqualTo(expectedResponse);
         assertThat(secondResponse).isEqualTo(expectedResponse);
         verify(jdbc, org.mockito.Mockito.times(2)).queryForObject(
-                """
+                eq("""
                         INSERT INTO app_user (id, external_subject, display_name, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?)
                         ON CONFLICT (external_subject) DO UPDATE
                         SET display_name = EXCLUDED.display_name, updated_at = EXCLUDED.updated_at
                         RETURNING id, external_subject, display_name, created_at, updated_at
-                        """,
+                        """),
                 any(RowMapper.class), anyString(), eq("local-preview"), eq("Local Preview User"), any(), any());
     }
 

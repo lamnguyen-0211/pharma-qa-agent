@@ -1,9 +1,14 @@
 """Provider-neutral boundaries and production model adapters."""
 
 import json
+import os
 from typing import Protocol
 
 from pydantic import ValidationError
+
+from google import genai
+from google.genai import types
+import math
 
 from .models import GeneratedAnswer, RetrievedChunk
 
@@ -191,3 +196,141 @@ class SentenceTransformerEmbeddingProvider:
     def embed_query(self, text: str) -> list[float]:
         query = f"Instruct: {self.QUERY_INSTRUCTION}\nQuery: {text}"
         return self.embed_documents([query])[0]
+
+
+class GoogleEmbeddingProvider:
+    """Google Gemini embedding implementation for document retrieval."""
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model_name: str = "gemini-embedding-001",
+        output_dimensionality: int = 768,
+        batch_size: int = 100,
+        normalize: bool = True,
+    ) -> None:
+        resolved_api_key = api_key or os.getenv("GEMINI_API_KEY")
+
+        if not resolved_api_key:
+            raise ValueError(
+                "Google AI API key is missing. "
+                "Pass api_key or set the GEMINI_API_KEY environment variable."
+            )
+
+        if output_dimensionality < 128 or output_dimensionality > 3072:
+            raise ValueError(
+                "output_dimensionality must be between 128 and 3072."
+            )
+
+        if batch_size <= 0:
+            raise ValueError("batch_size must be greater than zero.")
+
+        self.model_name = model_name
+        self.output_dimensionality = output_dimensionality
+        self.batch_size = batch_size
+        self.normalize = normalize
+        self._client = genai.Client(api_key=resolved_api_key)
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        """Embed source chunks using the retrieval-document task type."""
+
+        if not texts:
+            return []
+
+        self._validate_texts(texts)
+
+        vectors: list[list[float]] = []
+
+        for start in range(0, len(texts), self.batch_size):
+            batch = texts[start : start + self.batch_size]
+
+            response = self._client.models.embed_content(
+                model=self.model_name,
+                contents=batch,
+                config=types.EmbedContentConfig(
+                    task_type="RETRIEVAL_DOCUMENT",
+                    output_dimensionality=self.output_dimensionality,
+                ),
+            )
+
+            if not response.embeddings:
+                raise RuntimeError(
+                    "Google AI returned no document embeddings."
+                )
+
+            if len(response.embeddings) != len(batch):
+                raise RuntimeError(
+                    "Google AI returned an unexpected number of embeddings: "
+                    f"expected {len(batch)}, received "
+                    f"{len(response.embeddings)}."
+                )
+
+            for embedding in response.embeddings:
+                if embedding.values is None:
+                    raise RuntimeError(
+                        "Google AI returned an embedding without values."
+                    )
+
+                vector = [float(value) for value in embedding.values]
+                vectors.append(self._prepare_vector(vector))
+
+        return vectors
+
+    def embed_query(self, text: str) -> list[float]:
+        """Embed a search query using the retrieval-query task type."""
+
+        self._validate_text(text, field_name="query")
+
+        response = self._client.models.embed_content(
+            model=self.model_name,
+            contents=text,
+            config=types.EmbedContentConfig(
+                task_type="RETRIEVAL_QUERY",
+                output_dimensionality=self.output_dimensionality,
+            ),
+        )
+
+        if not response.embeddings:
+            raise RuntimeError("Google AI returned no query embedding.")
+
+        embedding = response.embeddings[0]
+
+        if embedding.values is None:
+            raise RuntimeError(
+                "Google AI returned a query embedding without values."
+            )
+
+        vector = [float(value) for value in embedding.values]
+        return self._prepare_vector(vector)
+
+    def close(self) -> None:
+        """Close resources held by the Google Gen AI client."""
+
+        self._client.close()
+
+    def _prepare_vector(self, vector: list[float]) -> list[float]:
+        if not self.normalize:
+            return vector
+
+        magnitude = math.sqrt(sum(value * value for value in vector))
+
+        if magnitude == 0:
+            raise RuntimeError("Google AI returned a zero-length embedding.")
+
+        return [value / magnitude for value in vector]
+
+    @staticmethod
+    def _validate_texts(texts: list[str]) -> None:
+        for index, text in enumerate(texts):
+            GoogleEmbeddingProvider._validate_text(
+                text,
+                field_name=f"texts[{index}]",
+            )
+
+    @staticmethod
+    def _validate_text(text: str, field_name: str) -> None:
+        if not isinstance(text, str):
+            raise TypeError(f"{field_name} must be a string.")
+
+        if not text.strip():
+            raise ValueError(f"{field_name} must not be empty.")

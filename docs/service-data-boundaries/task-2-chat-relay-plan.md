@@ -28,11 +28,11 @@
 - Consumes: `BusinessSessionService.requireSession(String)` and `AiClient.chat(ChatRequest)`.
 - Produces: test-proven `ChatRelayService.chat(ChatRequest): JsonNode` behavior and 404 error mapping for unknown business sessions.
 
-- [ ] **Step 1: Write the failing relay tests**
+- [x] **Step 1: Write the failing relay tests**
 
 Create Mockito tests with a `ChatRequest("business-1", "chat-1", "What is this used for?")`, stubbing `aiClient.chat(request)` to return `objectMapper.readTree("{\"chatSessionId\":\"chat-1\",\"answer\":\"ok\"}")`. Assert the returned node is identical, verify `requireSession("business-1")` occurs before the exact request is forwarded, and assert `BusinessSessionNotFoundException` prevents an AI call. Add a direct exception-handler test for `ErrorResponse("Business session not found.")`.
 
-- [ ] **Step 2: Verify red**
+- [x] **Step 2: Verify red**
 
 Run: `cd src/backend && mvn -q -Dtest=ChatRelayServiceTest,ApiExceptionHandlerTest test`
 
@@ -53,19 +53,19 @@ Expected: compilation failure because `ChatRelayService` and `AiClient.chat` do 
 **Interfaces:**
 - Produces `POST /api/v1/chat` returning HTTP 200 with the AI `JsonNode`.
 
-- [ ] **Step 1: Implement the request record**
+- [x] **Step 1: Implement the request record**
 
 Define `public record ChatRequest(@NotBlank String businessSessionId, String chatSessionId, @NotBlank @Size(max = 4000) String question) {}` so Jackson retains the FastAPI camel-case JSON property names and `chatSessionId` remains nullable.
 
-- [ ] **Step 2: Implement client and service**
+- [x] **Step 2: Implement client and service**
 
 Make `AiClient.chat` call `POST /v1/chat`, set JSON content type, send the `ChatRequest` unchanged, and deserialize to `JsonNode`, throwing the existing unavailable-dependency exception when the body is absent. Implement `ChatRelayService.chat` as exactly `businessSessions.requireSession(request.businessSessionId()); return aiClient.chat(request);`.
 
-- [ ] **Step 3: Replace routes and delete persistence code**
+- [x] **Step 3: Replace routes and delete persistence code**
 
 Create the validated `ChatRelayController` at `/api/v1/chat`; delete all three conversation routes, both legacy response records, and `ConversationService`, which is the only Java code inserting `message` or `audit_event` rows.
 
-- [ ] **Step 4: Verify green and boundary scan**
+- [x] **Step 4: Verify green and boundary scan**
 
 Run: `cd src/backend && mvn -q -Dtest=BusinessSessionServiceTest,ChatRelayServiceTest,ApiExceptionHandlerTest test`
 
@@ -78,17 +78,27 @@ Expected: focused tests pass and the source scan produces no matches.
 **Files:**
 - Create: `.superpowers/sdd/task-2-report.md`
 
-- [ ] **Step 1: Review scoped diff and workspace state**
+- [x] **Step 1: Review scoped diff and workspace state**
 
 Run `git diff --check -- <Task 2 paths>`, `git diff -- <Task 2 paths>`, and `git branch --show-current`; ensure Task 1 files remain unstaged.
 
-- [ ] **Step 2: Record verification evidence**
+- [x] **Step 2: Record verification evidence**
 
 Write `.superpowers/sdd/task-2-report.md` with changed/deleted files, relay contract, focused-test results or environment blocker, scan result, commit/push result, and risks.
 
-- [ ] **Step 3: Attempt scoped commit**
+- [x] **Step 3: Commit the completed branch work**
 
-Stage only the Task 2 files and report with `git add -- <Task 2 paths>`; run `git commit -m "fix: relay chat without core AI persistence"` only on a named branch. Attempt `git push -u origin "$(git branch --show-current)"` after a successful commit and record the exact outcome.
+Stage the completed branch work and commit it on the named `feat/langgraph-rag` branch. Push only when explicitly requested.
+
+### Current PR checklist
+
+- [x] Core-to-AI chat relay uses a plain HTTP/1.1 client and forwards the JSON body.
+- [x] Frontend session bootstrap uses `/api/business-sessions` without a trailing space.
+- [x] Frontend tests and TypeScript checks pass.
+- [x] Core Maven tests pass: 16 tests, 0 failures.
+- [x] AI chat API tests pass: 5 tests, 0 failures.
+- [ ] Full AI API suite: four pre-existing knowledge-upload serialization failures remain outside the chat relay fix.
+- [ ] Push the branch after explicit approval.
 
 ## Self-Review
 
