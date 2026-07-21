@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
 
   ai-postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: ${AI_POSTGRES_DB:-pharma_ai}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -56,6 +56,14 @@ services:
       - "${AI_BACKEND_PORT:-8000}:8000"
     environment:
       AI_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@ai-postgres:5432/${AI_POSTGRES_DB:-pharma_ai}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      CHAT_MODEL_NAME: ${CHAT_MODEL_NAME:-gemini-3.5-flash}
+      EMBEDDING_TYPE: ${EMBEDDING_TYPE:-google-embedding}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-gemini-embedding-001}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-768}
+      RAG_TOP_K: ${RAG_TOP_K:-5}
+      RAG_MAX_CONTEXT_CHARS: ${RAG_MAX_CONTEXT_CHARS:-12000}
+      KNOWLEDGE_UPLOAD_MAX_BYTES: ${KNOWLEDGE_UPLOAD_MAX_BYTES:-10485760}
     depends_on:
       ai-postgres:
         condition: service_healthy

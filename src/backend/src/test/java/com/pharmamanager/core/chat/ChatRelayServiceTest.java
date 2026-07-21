@@ -38,7 +38,7 @@ class ChatRelayServiceTest {
 
     @Test
     void validChatRequestIsForwardedWithoutCorePersistence() throws Exception {
-        var request = new ChatRequest("business-1", "chat-1", "What is this used for?");
+        var request = new ChatRequest("business-1", "chat-1", "What is this used for?", true);
         var aiResponse = objectMapper.readTree("{\"chatSessionId\":\"chat-1\",\"answer\":\"ok\"}");
         when(aiClient.chat(request)).thenReturn(aiResponse);
 
@@ -48,12 +48,21 @@ class ChatRelayServiceTest {
         verify(businessSessions).requireSession("business-1");
         verify(aiClient).chat(requestCaptor.capture());
         assertThat(requestCaptor.getValue()).isEqualTo(request);
+        assertThat(requestCaptor.getValue().useKnowledgeBase()).isTrue();
         verifyNoMoreInteractions(businessSessions, aiClient);
     }
 
     @Test
+    void omittedKnowledgeChoiceRemainsAbsentForFastApiDefaulting() throws Exception {
+        var request = new ChatRequest("business-1", null, "What is this used for?", null);
+
+        assertThat(objectMapper.writeValueAsString(request))
+                .doesNotContain("useKnowledgeBase");
+    }
+
+    @Test
     void unknownBusinessSessionIsNotForwardedToAi() {
-        var request = new ChatRequest("missing", null, "What is this used for?");
+        var request = new ChatRequest("missing", null, "What is this used for?", false);
         when(businessSessions.requireSession("missing"))
                 .thenThrow(new BusinessSessionNotFoundException("missing"));
 

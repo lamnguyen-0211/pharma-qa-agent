@@ -54,10 +54,33 @@ describe("chat gateway", () => {
           businessSessionId: "business-1",
           chatSessionId: "chat-1",
           question: "What is this?",
+          useKnowledgeBase: true,
         }),
       }),
     );
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(aiResponse);
+  });
+
+  it("forwards an explicitly disabled knowledge choice", async () => {
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ answer: "general" }), { status: 200 }),
+    );
+
+    const response = await POST(new Request("http://localhost/api/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        businessSessionId: "business-1",
+        question: "Explain this topic",
+        useKnowledgeBase: false,
+      }),
+      headers: { "Content-Type": "application/json" },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
+      question: "Explain this topic",
+      useKnowledgeBase: false,
+    });
   });
 });

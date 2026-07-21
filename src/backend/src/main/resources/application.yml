@@ -1,8 +1,15 @@
 server:
   port: ${SERVER_PORT:8080}
+  tomcat:
+    max-part-count: 50
+    max-http-form-post-size: 12MB
 spring:
   application:
     name: pharma-manager-core-api
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
   datasource:
     url: ${CORE_DATABASE_URL:jdbc:postgresql://127.0.0.1:5432/pharma_core}
     username: ${DATABASE_USERNAME:postgres}

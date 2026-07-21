@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import type { Citation } from "../lib/ai";
 
 type MessageRole = "user" | "assistant";
 type MessageStatus = "pending" | "error";
@@ -11,6 +13,7 @@ type ChatMessage = {
   content: string;
   status?: MessageStatus;
   riskLevel?: string;
+  citations?: Citation[];
 };
 
 type BusinessSessionResponse = {
@@ -22,6 +25,7 @@ type ChatResponse = {
   answer?: string;
   chatSessionId?: string;
   risk_level?: string;
+  citations?: Citation[];
   error?: string;
 };
 
@@ -50,6 +54,7 @@ export default function Home() {
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [useKnowledgeBase, setUseKnowledgeBase] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -83,7 +88,13 @@ export default function Home() {
     if (retryMessageId) {
       setMessages((currentMessages) => currentMessages.map((message) => (
         message.id === retryMessageId
-          ? { ...message, content: "Reviewing your question…", status: "pending", riskLevel: undefined }
+          ? {
+            ...message,
+            content: "Reviewing your question…",
+            status: "pending",
+            riskLevel: undefined,
+            citations: undefined,
+          }
           : message
       )));
     } else {
@@ -104,6 +115,7 @@ export default function Home() {
           businessSessionId,
           ...(chatSessionId ? { chatSessionId } : {}),
           question: trimmedQuestion,
+          useKnowledgeBase,
         }),
       });
       const data = await response.json() as ChatResponse;
@@ -119,13 +131,20 @@ export default function Home() {
             content: data.answer ?? data.error ?? "The assistant did not return a response.",
             status: undefined,
             riskLevel: data.risk_level,
+            citations: data.citations ?? [],
           }
           : message
       )));
     } catch {
       setMessages((currentMessages) => currentMessages.map((message) => (
         message.id === assistantMessageId
-          ? { ...message, content: "The assistant could not be reached.", status: "error", riskLevel: undefined }
+          ? {
+            ...message,
+            content: "The assistant could not be reached.",
+            status: "error",
+            riskLevel: undefined,
+            citations: undefined,
+          }
           : message
       )));
     } finally {
@@ -193,6 +212,11 @@ export default function Home() {
           </div>
         </div>
 
+        <Link className="knowledge-nav-link" href="/knowledge">
+          <span aria-hidden="true">◇</span>
+          Knowledge base
+        </Link>
+
         <div className="sidebar-footer">
           <p className="sidebar-label">Session status</p>
           <div className={`session-status ${sessionError ? "is-error" : ""}`}>
@@ -251,6 +275,16 @@ export default function Home() {
                       {message.riskLevel && <span className="risk-label">Risk: {message.riskLevel}</span>}
                     </div>
                     <p>{message.content}</p>
+                    {message.citations && message.citations.length > 0 && (
+                      <ul className="citation-list" aria-label="Citations">
+                        {message.citations.map((citation) => (
+                          <li key={citation.chunkId}>
+                            {citation.title} · v{citation.version}
+                            {citation.page != null ? ` · page ${citation.page}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     {message.status === "error" && (
                       <button className="retry-button" type="button" onClick={() => retryMessage(message.id)} disabled={busy}>
                         Retry
@@ -278,7 +312,19 @@ export default function Home() {
             />
           </div>
           <div className="composer-footer">
-            <span className="character-count">{question.length}/{MAX_QUESTION_LENGTH}</span>
+            <div className="composer-options">
+              <label className="knowledge-switch">
+                <input
+                  type="checkbox"
+                  checked={useKnowledgeBase}
+                  onChange={(event) => setUseKnowledgeBase(event.target.checked)}
+                  disabled={busy}
+                />
+                <span className="switch-track" aria-hidden="true"><span /></span>
+                <span>Use knowledge base</span>
+              </label>
+              <span className="character-count">{question.length}/{MAX_QUESTION_LENGTH}</span>
+            </div>
             <button className="send-button" type="submit" aria-label={busy ? "Sending…" : "Send message"} disabled={!canSend}>
               {busy ? "Sending…" : "Send"}
               <span aria-hidden="true">↗</span>
