@@ -14,6 +14,7 @@ from .knowledge import (
 from .models import ChatRequest, ChatResponse, KnowledgeDocument
 from .providers import (
     GeminiChatProvider,
+    GeminiReranker,
     GoogleEmbeddingProvider,
     ModelProviderError,
     SentenceTransformerEmbeddingProvider,
@@ -39,7 +40,7 @@ def create_app(
             settings = Settings.from_env()
             store = PostgresAiStore(settings.ai_database_url)
             store.initialize_schema()
-            print("dimension", settings.embedding_dimension)
+
             if settings.embedding_type != "sentence-transformers":
                 embedder = GoogleEmbeddingProvider(
                     api_key=settings.gemini_api_key,
@@ -53,12 +54,20 @@ def create_app(
                     expected_dimension=settings.embedding_dimension,
                 )
 
+            reranker = None
+            if settings.rag_rerank_enabled and settings.gemini_api_key:
+                reranker = GeminiReranker(
+                    settings.gemini_api_key,
+                    settings.reranker_model_name,
+                )
             retriever = PostgresKnowledgeRetriever(
                 store,
                 embedder,
                 settings.embedding_dimension,
                 settings.rag_top_k,
                 settings.rag_max_context_chars,
+                candidate_k=settings.rag_candidate_k,
+                reranker=reranker,
             )
             provider = GeminiChatProvider(
                 settings.gemini_api_key,
@@ -163,17 +172,17 @@ def create_app(
         except DuplicateDocumentError as error:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=error,
+                detail="Document content already exists.",
             ) from error
         except (KnowledgeValidationError, ValidationError) as error:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=error,
+                detail="Document upload is invalid.",
             ) from error
         except (EmbeddingConfigurationError, AiPersistenceError) as error:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=error,
+                detail="Knowledge indexing is unavailable.",
             ) from error
         finally:
             await file.close()

@@ -1,12 +1,15 @@
 """AI-owned persistence for chat history and approved-document retrieval."""
 
+import logging
 from pathlib import Path
 from typing import Protocol
 from uuid import UUID, uuid4
 
 from .knowledge import EmbeddingConfigurationError, PreparedDocument
 from .models import ChatResponse, KnowledgeDocument, RetrievedChunk
-from .providers import EmbeddingProvider
+from .providers import EmbeddingProvider, KnowledgeReranker, ModelProviderError
+
+logger = logging.getLogger(__name__)
 
 
 class AiPersistenceError(RuntimeError):
@@ -358,12 +361,17 @@ class PostgresKnowledgeRetriever:
         expected_dimension: int,
         top_k: int,
         max_context_chars: int,
+        *,
+        candidate_k: int | None = None,
+        reranker: KnowledgeReranker | None = None,
     ) -> None:
         self.store = store
         self.embedder = embedder
         self.expected_dimension = expected_dimension
         self.top_k = top_k
         self.max_context_chars = max_context_chars
+        self.candidate_k = max(candidate_k or top_k, top_k)
+        self.reranker = reranker
 
     def search(self, question: str) -> list[RetrievedChunk]:
         embedding = self.embedder.embed_query(question)
@@ -371,7 +379,15 @@ class PostgresKnowledgeRetriever:
             raise EmbeddingConfigurationError(
                 "Embedding dimension does not match EMBEDDING_DIMENSION."
             )
-        chunks = self.store.search_knowledge(question, embedding, self.top_k)
+        chunks = self.store.search_knowledge(question, embedding, self.candidate_k)
+        try:
+            if self.reranker is not None and chunks:
+                chunks = self.reranker.rerank(question, chunks, self.top_k)
+        except ModelProviderError:
+            logger.warning(
+                "Knowledge reranking failed; using hybrid ranking", exc_info=True
+            )
+        chunks = chunks[: self.top_k]
         selected: list[RetrievedChunk] = []
         used_chars = 0
         for chunk in chunks:

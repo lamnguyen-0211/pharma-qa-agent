@@ -42,6 +42,12 @@ test("uploads approved knowledge and uses it in chat", async ({ page }) => {
           version: "3.2",
           page: 1,
           chunkId: "chunk-1",
+        }, {
+          documentId: "document-2",
+          title: "Safety Monograph",
+          version: "1.1",
+          page: 4,
+          chunkId: "chunk-2",
         }],
       },
     });
@@ -64,6 +70,13 @@ test("uploads approved knowledge and uses it in chat", async ({ page }) => {
   await page.getByRole("textbox", { name: "Ask the assistant" }).fill("What is Product A used for?");
   await page.getByRole("button", { name: "Send message" }).click();
   await expect(page.getByText("Approved Label · v3.2 · page 1")).toBeVisible();
+  await expect(page.getByText("Safety Monograph · v1.1 · page 4")).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Citations" }).locator("li").allTextContents(),
+  ).resolves.toEqual([
+    "Approved Label · v3.2 · page 1",
+    "Safety Monograph · v1.1 · page 4",
+  ]);
   expect(chatPayload).toMatchObject({
     businessSessionId: "business-1",
     question: "What is Product A used for?",

@@ -95,6 +95,7 @@ def test_hybrid_search_returns_only_approved_current_documents(store):
         expected_dimension=1024,
         top_k=5,
         max_context_chars=12_000,
+        candidate_k=10,
     ).search("What is the Product A indication?")
 
     assert {chunk.document_id for chunk in results} == {approved.document_id}

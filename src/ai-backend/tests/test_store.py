@@ -6,6 +6,7 @@ import pytest
 
 from app.knowledge import EmbeddingConfigurationError
 from app.models import RetrievedChunk
+from app.providers import ModelProviderError
 from app.store import PostgresAiStore, PostgresKnowledgeRetriever
 
 
@@ -45,6 +46,19 @@ class FakeSearchStore:
     def search_knowledge(self, question, embedding, top_k):
         self.calls.append((question, embedding, top_k))
         return self.chunks
+
+
+class FakeReranker:
+    def __init__(self, result: list[RetrievedChunk] | None = None, error=None) -> None:
+        self.result = result or []
+        self.error = error
+        self.calls = []
+
+    def rerank(self, question, chunks, top_k):
+        self.calls.append((question, chunks, top_k))
+        if self.error is not None:
+            raise self.error
+        return self.result
 
 
 class FakeQueryEmbedder:
@@ -122,3 +136,77 @@ def test_retriever_caps_total_context_without_reordering():
     result = retriever.search("Product A")
 
     assert [chunk.chunk_id for chunk in result] == ["chunk-0", "chunk-1"]
+
+
+def test_retriever_requests_candidate_pool_and_returns_reranked_top_k():
+    chunks = [
+        RetrievedChunk(
+            chunk_id=f"chunk-{index}",
+            document_id="document-1",
+            title="Approved Label",
+            version="3.2",
+            content=f"content-{index}",
+            score=1.0 - index / 10,
+        )
+        for index in range(3)
+    ]
+    store = FakeSearchStore(chunks)
+    reranker = FakeReranker([chunks[2], chunks[0], chunks[1]])
+    retriever = PostgresKnowledgeRetriever(
+        store,
+        FakeQueryEmbedder([0.1, 0.2, 0.3]),
+        expected_dimension=3,
+        top_k=2,
+        max_context_chars=12_000,
+        candidate_k=15,
+        reranker=reranker,
+    )
+
+    result = retriever.search("Product A")
+
+    assert store.calls == [("Product A", [0.1, 0.2, 0.3], 15)]
+    assert reranker.calls == [("Product A", chunks, 2)]
+    assert [chunk.chunk_id for chunk in result] == ["chunk-2", "chunk-0"]
+
+
+def test_retriever_falls_back_to_hybrid_order_when_reranker_fails():
+    chunks = [
+        RetrievedChunk(
+            chunk_id=f"chunk-{index}",
+            document_id="document-1",
+            title="Approved Label",
+            version="3.2",
+            content=f"content-{index}",
+            score=1.0 - index / 10,
+        )
+        for index in range(2)
+    ]
+    store = FakeSearchStore(chunks)
+    reranker = FakeReranker(error=ModelProviderError("Reranking failed."))
+    retriever = PostgresKnowledgeRetriever(
+        store,
+        FakeQueryEmbedder([0.1, 0.2, 0.3]),
+        expected_dimension=3,
+        top_k=2,
+        max_context_chars=12_000,
+        reranker=reranker,
+    )
+
+    result = retriever.search("Product A")
+
+    assert [chunk.chunk_id for chunk in result] == ["chunk-0", "chunk-1"]
+
+
+def test_retriever_skips_reranker_for_empty_candidates():
+    reranker = FakeReranker()
+    retriever = PostgresKnowledgeRetriever(
+        FakeSearchStore(),
+        FakeQueryEmbedder([0.1, 0.2, 0.3]),
+        expected_dimension=3,
+        top_k=2,
+        max_context_chars=12_000,
+        reranker=reranker,
+    )
+
+    assert retriever.search("Product A") == []
+    assert reranker.calls == []
