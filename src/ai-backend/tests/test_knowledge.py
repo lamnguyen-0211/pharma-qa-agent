@@ -70,6 +70,30 @@ def test_settings_use_configurable_qwen_defaults(monkeypatch: pytest.MonkeyPatch
     assert settings.embedding_model_name == "Qwen/Qwen3-Embedding-0.6B"
     assert settings.embedding_dimension == 1024
     assert settings.chat_model_name == "gemini-3.5-flash"
+    assert settings.rag_candidate_k == 15
+    assert settings.rag_rerank_enabled is True
+    assert settings.reranker_model_name == "gemini-3.5-flash-lite"
+
+
+@pytest.mark.parametrize("value", ["1", "true", "TRUE", "yes", "On"])
+def test_settings_accept_case_insensitive_rerank_boolean_values(
+    monkeypatch: pytest.MonkeyPatch, value: str
+):
+    monkeypatch.setenv("AI_DATABASE_URL", "postgresql://test")
+    monkeypatch.setenv("RAG_RERANK_ENABLED", value)
+
+    assert Settings.from_env().rag_rerank_enabled is True
+
+
+@pytest.mark.parametrize("value", ["0", "false", "off", "maybe"])
+def test_settings_reject_other_non_empty_rerank_boolean_values(
+    monkeypatch: pytest.MonkeyPatch, value: str
+):
+    monkeypatch.setenv("AI_DATABASE_URL", "postgresql://test")
+    monkeypatch.setenv("RAG_RERANK_ENABLED", value)
+
+    with pytest.raises(ValueError, match="RAG_RERANK_ENABLED"):
+        Settings.from_env()
 
 
 def test_text_document_is_chunked_with_metadata_and_checksum():

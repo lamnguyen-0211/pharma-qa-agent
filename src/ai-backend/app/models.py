@@ -35,6 +35,15 @@ class RetrievedChunk(BaseModel):
     score: float
 
 
+class RerankedChunk(BaseModel):
+    chunk_id: str = Field(min_length=1)
+    score: float = Field(ge=0.0, le=1.0)
+
+
+class RerankedResults(BaseModel):
+    results: list[RerankedChunk] = Field(default_factory=list, max_length=64)
+
+
 class GeneratedAnswer(BaseModel):
     answer: str
     cited_chunk_ids: list[str] = Field(default_factory=list)
