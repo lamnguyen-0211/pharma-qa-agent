@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE_FILE="${COMPOSE_FILE:-$ROOT_DIR/docker-compose.yml}"
+ROOT_COMPOSE_FILE="$ROOT_DIR/docker-compose.yml"
 DEPLOY_ENV_FILE="${DEPLOY_ENV_FILE:?DEPLOY_ENV_FILE must point to a mode-600 Compose env file}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-pharma-manager}"
 COMPOSE_WAIT_TIMEOUT="${COMPOSE_WAIT_TIMEOUT:-180}"
@@ -17,8 +17,8 @@ docker compose version >/dev/null 2>&1 || {
   echo "docker compose is required on the deployment runner" >&2
   exit 1
 }
-[[ -f "$COMPOSE_FILE" ]] || {
-  echo "Compose file not found: $COMPOSE_FILE" >&2
+[[ -f "$ROOT_COMPOSE_FILE" ]] || {
+  echo "Compose file not found: $ROOT_COMPOSE_FILE" >&2
   exit 1
 }
 [[ -f "$DEPLOY_ENV_FILE" ]] || {
@@ -36,7 +36,7 @@ compose=(
   docker compose
   --project-name "$COMPOSE_PROJECT_NAME"
   --env-file "$DEPLOY_ENV_FILE"
-  --file "$COMPOSE_FILE"
+  --file "$ROOT_COMPOSE_FILE"
 )
 
 print_diagnostics() {

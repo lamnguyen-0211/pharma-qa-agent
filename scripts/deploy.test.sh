@@ -25,15 +25,34 @@ chmod +x "$WORK_DIR/bin/docker"
 
 printf 'GEMINI_API_KEY=ci-test-key\nPOSTGRES_PASSWORD=ci-test-password\n' >"$WORK_DIR/deploy.env"
 chmod 600 "$WORK_DIR/deploy.env"
+printf 'services: {}\n' >"$WORK_DIR/alternate-compose.yml"
 
-FAKE_DOCKER_LOG="$WORK_DIR/success.log" \
-PATH="$WORK_DIR/bin:$PATH" \
-DEPLOY_ENV_FILE="$WORK_DIR/deploy.env" \
-COMPOSE_PROJECT_NAME="ci-test" \
+EXPECTED_COMPOSE_PREFIX="compose --project-name ci-test --env-file $WORK_DIR/deploy.env --file $ROOT_DIR/docker-compose.yml"
+
+env -u COMPOSE_WAIT_TIMEOUT \
+  FAKE_DOCKER_LOG="$WORK_DIR/success.log" \
+  PATH="$WORK_DIR/bin:$PATH" \
+  DEPLOY_ENV_FILE="$WORK_DIR/deploy.env" \
+  COMPOSE_PROJECT_NAME="ci-test" \
+  COMPOSE_FILE="$WORK_DIR/alternate-compose.yml" \
   "$ROOT_DIR/scripts/deploy.sh"
 
-grep -Fq 'config --quiet' "$WORK_DIR/success.log"
-grep -Fq 'up -d --build --remove-orphans --wait' "$WORK_DIR/success.log"
+grep -Fxq "$EXPECTED_COMPOSE_PREFIX config --quiet" "$WORK_DIR/success.log"
+grep -Fxq "$EXPECTED_COMPOSE_PREFIX up -d --build --remove-orphans --wait --wait-timeout 180" "$WORK_DIR/success.log"
+grep -Fxq "$EXPECTED_COMPOSE_PREFIX ps" "$WORK_DIR/success.log"
+
+chmod 644 "$WORK_DIR/deploy.env"
+if env -u COMPOSE_WAIT_TIMEOUT \
+  FAKE_DOCKER_LOG="$WORK_DIR/mode.log" \
+  PATH="$WORK_DIR/bin:$PATH" \
+  DEPLOY_ENV_FILE="$WORK_DIR/deploy.env" \
+  COMPOSE_PROJECT_NAME="ci-test" \
+  "$ROOT_DIR/scripts/deploy.sh" 2>"$WORK_DIR/mode.err"; then
+  echo "expected mode-644 env file to be rejected" >&2
+  exit 1
+fi
+grep -Fq 'Deployment env file must have mode 600; found 644' "$WORK_DIR/mode.err"
+chmod 600 "$WORK_DIR/deploy.env"
 
 if FAKE_DOCKER_FAIL_UP=1 \
   FAKE_DOCKER_LOG="$WORK_DIR/failure.log" \
