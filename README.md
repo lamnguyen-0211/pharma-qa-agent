@@ -78,7 +78,7 @@ The Spring Boot core API requires Java 21, Maven, and PostgreSQL. Copy `.env.exa
 
 ## Run with Docker Compose
 
-Docker Compose provisions separate core and AI PostgreSQL databases, the Redis cache service reserved by the recommended architecture, and the three application services:
+Docker Compose provisions separate core and AI PostgreSQL databases, the Redis cache service reserved by the recommended architecture, and the three application services.
 
 ```bash
 docker compose up --build

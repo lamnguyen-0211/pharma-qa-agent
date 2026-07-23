@@ -50,8 +50,7 @@ services:
   ai-backend:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: ai-backend
+      dockerfile: src/ai-backend/Dockerfile
     ports:
       - "${AI_BACKEND_PORT:-8000}:8000"
     environment:
@@ -80,8 +79,7 @@ services:
   core-api:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: core-api
+      dockerfile: src/backend/Dockerfile
     environment:
       CORE_DATABASE_URL: jdbc:postgresql://core-postgres:5432/${CORE_POSTGRES_DB:-pharma_core}
       DATABASE_USERNAME: ${POSTGRES_USER:-postgres}
@@ -104,8 +102,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: frontend
+      dockerfile: src/frontend/Dockerfile
     environment:
       CORE_API_URL: http://core-api:8080
     ports:

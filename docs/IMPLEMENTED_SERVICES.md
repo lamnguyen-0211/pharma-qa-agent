@@ -182,6 +182,15 @@ Response:
 
 The AI service persists the user and assistant message pair atomically before returning. The `trace_id` is generated for each request as a correlation identifier.
 
+### Approved-document RAG
+
+When `useKnowledgeBase` is enabled, the AI service performs a two-stage retrieval flow:
+
+1. PostgreSQL filters out documents that are not approved, not yet effective, or expired. It then combines full-text ranking and pgvector cosine ranking with reciprocal-rank fusion to produce the candidate pool.
+2. If `RAG_RERANK_ENABLED` is true and `GEMINI_API_KEY` is configured, `gemini-3.5-flash-lite` reranks those candidates. The adapter accepts only server-issued chunk IDs and scores from 0 to 1; unknown or duplicate IDs are discarded.
+
+`RAG_CANDIDATE_K` defaults to 15, while `RAG_TOP_K` defaults to 5. The candidate pool is intentionally larger than the final context so the reranker can select the most relevant approved passages. A reranker failure uses the deterministic hybrid order, and the grounded workflow still refuses to generate an answer when no approved evidence is available. Returned citations are derived from the selected PostgreSQL chunk metadata.
+
 ## 4. Safety and policy workflow
 
 Location: `src/ai-backend/app/workflow.py`
@@ -221,7 +230,7 @@ Emergency questions are stopped before any model provider call. The response adv
 
 Location: `src/ai-backend/app/workflow.py`
 
-`ModelProvider` defines the future provider contract:
+`ModelProvider` defines the provider contract:
 
 ```python
 class ModelProvider:
@@ -229,7 +238,7 @@ class ModelProvider:
         raise NotImplementedError
 ```
 
-No production model provider is currently configured. The service fails closed with an explanatory response instead of inventing an answer.
+`GeminiChatProvider` is an optional server-side Google Gen AI adapter. It uses `GEMINI_API_KEY` and fails closed with an explanatory response when no approved provider is configured. The key is never exposed to the browser. `GeminiReranker` is separately configurable for the approved-document RAG candidate pool and falls back to hybrid order on provider failure.
 
 The project intentionally does not implement an unofficial ChatGPT browser-session or OAuth-token exchange. A supported model provider and approved server-side authentication mechanism must be selected before enabling model responses.
 
@@ -242,6 +251,8 @@ Core Flyway creates `app_user` and `business_session` in `pharma_core`. The AI s
 - `core-postgres` — PostgreSQL 16, database `pharma_core`, exposed on host port 5432 and used only by Spring Boot/Flyway.
 - `ai-postgres` — PostgreSQL 16, database `pharma_ai`, exposed on host port 5433 and used only by FastAPI.
 - `redis` — Redis 7 with AOF persistence, included for the cache layer in the recommended architecture. No current application code requires Redis yet.
+
+Compose builds the frontend, core API, and AI backend from `Dockerfile.frontend`, `Dockerfile.backend`, and `Dockerfile.ai-backend`, respectively. The repository root (`.`) remains the intentional build context for each application image.
 
 Start only the data services with `docker compose up core-postgres ai-postgres redis`, or start the complete containerized stack with `docker compose up --build`. The databases use separate named volumes and Redis uses `redis_data`.
 
@@ -280,6 +291,11 @@ Current variables:
 | `CORE_DATABASE_URL` | `jdbc:postgresql://127.0.0.1:5432/pharma_core` | Spring Boot core PostgreSQL connection |
 | `AI_DATABASE_URL` | `postgresql://postgres:postgres@127.0.0.1:5433/pharma_ai` | FastAPI AI PostgreSQL connection |
 | `AI_BACKEND_URL` | `http://127.0.0.1:8000` | URL of the Python AI service |
+| `GEMINI_API_KEY` | empty | Server-only Google Gen AI credential for chat and optional reranking |
+| `RAG_CANDIDATE_K` | `15` | Number of eligible hybrid-search candidates sent to reranking |
+| `RAG_RERANK_ENABLED` | `true` | Enables Gemini candidate reranking when a key is configured |
+| `RERANKER_MODEL_NAME` | `gemini-3.5-flash-lite` | Gemini model used for candidate reranking |
+| `RAG_TOP_K` | `5` | Maximum number of chunks retained for grounded context |
 
 No OpenAI API key is currently read by the application.
 
@@ -290,11 +306,7 @@ The following recommended services are not present in the current repository:
 - Mobile client with React Native
 - API gateway/WAF and rate limiting
 - Authentication, consent, and role-based authorization for the Spring Boot core API
-- Active LangGraph state graph and human-in-the-loop approvals
-- LLM provider integration
-- Approved-document ingestion and storage
-- Hybrid keyword/vector retrieval
-- Citation generation from source pages
+- Authentication, consent, and role-based authorization for document access
 - Redis cache and rate limiting
 - Kafka, RabbitMQ, SQS, or another message queue
 - OIDC, MFA, role-based access control, and consent management
