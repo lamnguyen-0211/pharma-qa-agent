@@ -1,0 +1,79 @@
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pharma-manager-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type-check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, x64]
+    environment: production
+    timeout-minutes: 45
+    steps:
+      - name: Check out merged source
+        uses: actions/checkout@v4
+      - name: Verify deployment runner
+        run: |
+          command -v docker
+          docker compose version
+          test -x scripts/deploy.sh
+      - name: Create temporary runtime env
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+        run: |
+          test -n "$GEMINI_API_KEY" || { echo "GEMINI_API_KEY is not configured" >&2; exit 1; }
+          test -n "$POSTGRES_PASSWORD" || { echo "POSTGRES_PASSWORD is not configured" >&2; exit 1; }
+          deploy_env_file="$RUNNER_TEMP/pharma-manager.env"
+          umask 077
+          {
+            printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY"
+            printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
+            printf 'POSTGRES_USER=%s\n' "${POSTGRES_USER:-postgres}"
+          } >"$deploy_env_file"
+          chmod 600 "$deploy_env_file"
+          echo "DEPLOY_ENV_FILE=$deploy_env_file" >>"$GITHUB_ENV"
+      - name: Deploy Docker Compose stack
+        env:
+          COMPOSE_PROJECT_NAME: pharma-manager
+        run: ./scripts/deploy.sh
+      - name: Remove temporary runtime env
+        if: always()
+        run: |
+          if [[ -n "${DEPLOY_ENV_FILE:-}" && -f "$DEPLOY_ENV_FILE" ]]; then
+            shred -u "$DEPLOY_ENV_FILE" 2>/dev/null || rm -f -- "$DEPLOY_ENV_FILE"
+          fi
