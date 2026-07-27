@@ -1,4 +1,5 @@
 import { GET, POST } from "./route";
+jest.mock("../../../../lib/server-auth", () => ({ bearerHeaders: jest.fn(async (extra) => ({ Authorization: "Bearer test-token", ...(extra ?? {}) })) }));
 
 describe("knowledge documents gateway", () => {
   afterEach(() => jest.restoreAllMocks());
@@ -34,7 +35,7 @@ describe("knowledge documents gateway", () => {
     expect(response.status).toBe(201);
     const options = fetchMock.mock.calls[0][1];
     expect(options?.body).toBeInstanceOf(FormData);
-    expect(options?.headers).toBeUndefined();
+    expect(options?.headers).toEqual({ Authorization: "Bearer test-token" });
     const forwarded = options?.body as FormData;
     expect(forwarded.get("title")).toBe("Approved Label");
     expect((forwarded.get("file") as File).name).toBe("label.txt");
