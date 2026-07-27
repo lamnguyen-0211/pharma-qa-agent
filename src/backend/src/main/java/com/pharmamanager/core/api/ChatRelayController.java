@@ -6,6 +6,8 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 public class ChatRelayController {
@@ -16,7 +18,10 @@ public class ChatRelayController {
     }
 
     @PostMapping("/api/v1/chat")
-    public JsonNode chat(@Valid @RequestBody ChatRequest request) {
-        return service.chat(request);
+    @PreAuthorize("hasAnyRole('PHARMA_USER', 'PHARMA_ADMIN')")
+    public JsonNode chat(@Valid @RequestBody ChatRequest request, Authentication authentication) {
+        return service.chat(request, authentication);
     }
+
+    public JsonNode chat(ChatRequest request) { return service.chat(request); }
 }

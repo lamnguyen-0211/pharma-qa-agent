@@ -86,6 +86,8 @@ docker compose up --build
 
 The frontend is available at `http://localhost:3000`. Core PostgreSQL is exposed on `localhost:5432`, AI PostgreSQL on `localhost:5433`, and Redis on `localhost:6379`. Flyway creates only core tables; the AI service applies its own schema to the AI database.
 
+For local OIDC testing, Keycloak is available at `http://localhost:8081`. The imported `pharma-manager` realm provides `user/user` (`PHARMA_USER`) and `admin/admin` (`PHARMA_USER`, `PHARMA_ADMIN`) test accounts. Start it with `docker compose up keycloak`; these credentials are development-only.
+
 To start only the data services:
 
 ```bash

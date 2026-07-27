@@ -20,6 +20,7 @@ describe("Pharma Manager chat workspace", () => {
 
   it("bootstraps a business session and submits a starter prompt", async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (input === "/api/me") return jsonResponse({ displayName: "User", consentAccepted: true, consentVersion: "2026-07-27" });
       if (input === "/api/business-sessions") {
         return jsonResponse({ businessSessionId: "business-1" }, 201);
       }
@@ -40,20 +41,22 @@ describe("Pharma Manager chat workspace", () => {
 
     render(<Home />);
 
-    expect(screen.getByRole("link", { name: "Knowledge base" })).toHaveAttribute("href", "/knowledge");
+    await waitFor(() => expect(screen.getByText("Checking your workspace access…")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Ask the assistant" })).toBeEnabled());
     const sendButton = screen.getByRole("button", { name: "Send message" });
     expect(sendButton).toBeDisabled();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: "Ask the assistant" })).toBeEnabled());
+    expect(screen.getByRole("link", { name: "Knowledge base" })).toHaveAttribute("href", "/knowledge");
 
     fireEvent.click(screen.getByRole("button", { name: "What can I ask?" }));
 
     expect(await screen.findByText("What can I ask?")).toBeInTheDocument();
     expect(await screen.findByText("Ask about approved product information.")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("keeps the question visible and offers retry after chat failure", async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      if (input === "/api/me") return jsonResponse({ displayName: "User", consentAccepted: true, consentVersion: "2026-07-27" });
       if (input === "/api/business-sessions") {
         return jsonResponse({ businessSessionId: "business-1" }, 201);
       }
@@ -72,13 +75,14 @@ describe("Pharma Manager chat workspace", () => {
     expect(await screen.findByText("What is this preview for?")).toBeInTheDocument();
     expect(await screen.findByText("The assistant could not be reached.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("retries the original question and starts a fresh conversation", async () => {
     const fetchMock = jest.fn();
     global.fetch = fetchMock;
     fetchMock
+      .mockResolvedValueOnce(jsonResponse({ displayName: "User", consentAccepted: true, consentVersion: "2026-07-27" }))
       .mockResolvedValueOnce(jsonResponse({ businessSessionId: "business-1" }, 201))
       .mockRejectedValueOnce(new Error("core unavailable"))
       .mockResolvedValueOnce(jsonResponse({
@@ -98,7 +102,7 @@ describe("Pharma Manager chat workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
 
     expect(await screen.findByText("The preview supports approved product questions.")).toBeInTheDocument();
-    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toEqual({
       businessSessionId: "business-1",
       question: "What is this preview for?",
       useKnowledgeBase: true,
@@ -117,6 +121,7 @@ describe("Pharma Manager chat workspace", () => {
     const fetchMock = jest.fn();
     global.fetch = fetchMock;
     fetchMock
+      .mockResolvedValueOnce(jsonResponse({ displayName: "User", consentAccepted: true, consentVersion: "2026-07-27" }))
       .mockResolvedValueOnce(jsonResponse({ businessSessionId: "business-1" }, 201))
       .mockResolvedValueOnce(jsonResponse({
         chatSessionId: "chat-1",
@@ -147,7 +152,7 @@ describe("Pharma Manager chat workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(await screen.findByText("Approved Label · v3.2 · page 4")).toBeInTheDocument();
-    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toMatchObject({
       question: "What is Product A used for?",
       useKnowledgeBase: true,
     });
@@ -158,7 +163,7 @@ describe("Pharma Manager chat workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(await screen.findByText("General answer.")).toBeInTheDocument();
-    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toEqual({
       businessSessionId: "business-1",
       chatSessionId: "chat-1",
       question: "Explain this generally",

@@ -1,0 +1,24 @@
+{
+  "realm": "pharma-manager",
+  "enabled": true,
+  "sslRequired": "none",
+  "roles": { "realm": [
+    { "name": "PHARMA_USER" },
+    { "name": "PHARMA_ADMIN" }
+  ] },
+  "clients": [{
+    "clientId": "pharma-frontend",
+    "enabled": true,
+    "protocol": "openid-connect",
+    "publicClient": false,
+    "secret": "local-development-secret",
+    "standardFlowEnabled": true,
+    "directAccessGrantsEnabled": true,
+    "redirectUris": ["http://127.0.0.1:3000/api/auth/callback/keycloak"],
+    "webOrigins": ["http://127.0.0.1:3000"]
+  }],
+  "users": [
+    { "username": "user", "firstName": "Local", "lastName": "User", "enabled": true, "email": "user@example.test", "emailVerified": true, "credentials": [{ "type": "password", "value": "user", "temporary": false }], "realmRoles": ["PHARMA_USER"] },
+    { "username": "admin", "firstName": "Local", "lastName": "Admin", "enabled": true, "email": "admin@example.test", "emailVerified": true, "credentials": [{ "type": "password", "value": "admin", "temporary": false }], "realmRoles": ["PHARMA_USER", "PHARMA_ADMIN"] }
+  ]
+}

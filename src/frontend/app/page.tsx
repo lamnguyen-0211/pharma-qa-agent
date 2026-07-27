@@ -20,6 +20,7 @@ type BusinessSessionResponse = {
   businessSessionId?: string;
   error?: string;
 };
+type ProfileResponse = { displayName?: string; consentAccepted?: boolean; consentVersion?: string; error?: string };
 
 type ChatResponse = {
   answer?: string;
@@ -55,12 +56,20 @@ export default function Home() {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(true);
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [consentBusy, setConsentBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
 
-    async function createBusinessSession() {
+    async function loadProfileAndSession() {
       try {
+        const profileResponse = await fetch("/api/me");
+        const profileData = await profileResponse.json() as ProfileResponse;
+        if (!profileResponse.ok) throw new Error(profileData.error ?? "Sign in required.");
+        if (active) setProfile(profileData);
+        if (!profileData.consentAccepted) return;
         const response = await fetch("/api/business-sessions", { method: "POST" });
         const data = await response.json() as BusinessSessionResponse;
         if (!response.ok || !data.businessSessionId) {
@@ -71,14 +80,27 @@ export default function Home() {
         if (active) {
           setSessionError(error instanceof Error ? error.message : "Unable to start a business session.");
         }
-      }
+      } finally { if (active) setProfileLoading(false); }
     }
 
-    void createBusinessSession();
+    void loadProfileAndSession();
     return () => {
       active = false;
     };
   }, []);
+
+  async function acceptConsent() {
+    setConsentBusy(true);
+    try {
+      const response = await fetch("/api/me", { method: "POST" });
+      const data = await response.json() as ProfileResponse;
+      if (!response.ok) throw new Error(data.error ?? "Unable to record consent.");
+      setProfile(data);
+      window.location.reload();
+    } catch (error) {
+      setSessionError(error instanceof Error ? error.message : "Unable to record consent.");
+    } finally { setConsentBusy(false); }
+  }
 
   async function sendQuestion(value: string, retryMessageId?: string) {
     const trimmedQuestion = value.trim();
@@ -187,6 +209,10 @@ export default function Home() {
   );
   const sessionStatus = sessionError ? "Session unavailable" : businessSessionId ? "Connected" : "Starting…";
   const canSend = Boolean(businessSessionId && question.trim() && !busy && !sessionError);
+
+  if (profileLoading) return <main className="auth-state"><p>Checking your workspace access…</p></main>;
+  if (!profile) return <main className="auth-state"><h1>Sign in required</h1><p>Sign in to use the internal Pharma Manager workspace.</p></main>;
+  if (!profile.consentAccepted) return <main className="auth-state"><h1>Review workspace consent</h1><p>Accept the current internal-use consent version ({profile.consentVersion}) before starting a session.</p><button type="button" onClick={() => void acceptConsent()} disabled={consentBusy}>{consentBusy ? "Saving…" : "Accept and continue"}</button>{sessionError && <p role="alert">{sessionError}</p>}</main>;
 
   return (
     <div className="app-shell">

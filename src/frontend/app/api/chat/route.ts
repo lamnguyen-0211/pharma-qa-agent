@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bearerHeaders } from "../../../lib/server-auth";
 
 const requestSchema = z.object({
   businessSessionId: z.string().trim().min(1).max(36),
@@ -11,9 +12,11 @@ const backendUrl = process.env.CORE_API_URL ?? "http://127.0.0.1:8080";
 export async function POST(request: Request) {
   try {
     const input = requestSchema.parse(await request.json());
+    const headers = await bearerHeaders({ "Content-Type": "application/json" });
+    if (!headers) return Response.json({ error: "Sign in required." }, { status: 401 });
     const response = await fetch(`${backendUrl}/api/v1/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(input),
       signal: AbortSignal.timeout(15_000),
     });
