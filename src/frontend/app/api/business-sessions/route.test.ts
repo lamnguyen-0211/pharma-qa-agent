@@ -1,30 +1,17 @@
 import { POST } from "./route";
+jest.mock("../../../lib/server-auth", () => ({ bearerHeaders: jest.fn(async (extra) => ({ Authorization: "Bearer test-token", ...(extra ?? {}) })) }));
 
 describe("business session gateway", () => {
   afterEach(() => jest.restoreAllMocks());
 
-  it("creates a local preview user and returns the core business session ID", async () => {
-    const fetchMock = jest.spyOn(global, "fetch")
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "user-1" }), { status: 201 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "business-1" }), { status: 201 }));
+  it("creates an authenticated business session without client identity fields", async () => {
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValueOnce(new Response(JSON.stringify({ id: "business-1" }), { status: 201 }));
 
     const response = await POST();
 
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
-      "http://127.0.0.1:8080/api/v1/users",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ externalSubject: "local-preview", displayName: "Local Preview User" }),
-      }),
-    );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
+    expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8080/api/v1/business-sessions",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ userId: "user-1" }),
-      }),
+      expect.objectContaining({ method: "POST", headers: expect.objectContaining({ Authorization: "Bearer test-token" }) }),
     );
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ businessSessionId: "business-1" });

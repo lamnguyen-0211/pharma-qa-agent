@@ -1,3 +1,4 @@
+import { bearerHeaders } from "../../../lib/server-auth";
 const backendUrl = process.env.CORE_API_URL ?? "http://127.0.0.1:8080";
 
 async function readResponse(response: Response) {
@@ -6,22 +7,12 @@ async function readResponse(response: Response) {
 }
 
 export async function POST() {
+  const headers = await bearerHeaders({ "Content-Type": "application/json" });
+  if (!headers) return Response.json({ error: "Sign in required." }, { status: 401 });
   try {
-    const userResponse = await fetch(`${backendUrl}/api/v1/users`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ externalSubject: "local-preview", displayName: "Local Preview User" }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!userResponse.ok) return readResponse(userResponse);
-
-    const user = await userResponse.json() as { id?: string };
-    if (!user.id) return Response.json({ error: "The core backend returned an invalid user." }, { status: 503 });
-
     const sessionResponse = await fetch(`${backendUrl}/api/v1/business-sessions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id }),
+      headers,
       signal: AbortSignal.timeout(15_000),
     });
     if (!sessionResponse.ok) return readResponse(sessionResponse);

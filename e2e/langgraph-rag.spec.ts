@@ -26,6 +26,9 @@ test("uploads approved knowledge and uses it in chat", async ({ page }) => {
     uploadBody = route.request().postData() ?? "";
     await route.fulfill({ status: 201, json: indexedDocument });
   });
+  await page.route("**/api/me", async (route) => {
+    await route.fulfill({ json: { displayName: "Admin", roles: ["PHARMA_USER", "PHARMA_ADMIN"], consentAccepted: true, consentVersion: "2026-07-27" } });
+  });
   await page.route("**/api/business-sessions", async (route) => {
     await route.fulfill({ status: 201, json: { businessSessionId: "business-1" } });
   });
@@ -85,6 +88,9 @@ test("uploads approved knowledge and uses it in chat", async ({ page }) => {
 });
 
 test("keeps upload metadata available when indexing is unavailable", async ({ page }) => {
+  await page.route("**/api/me", async (route) => {
+    await route.fulfill({ json: { displayName: "Admin", roles: ["PHARMA_USER", "PHARMA_ADMIN"], consentAccepted: true, consentVersion: "2026-07-27" } });
+  });
   await page.route("**/api/knowledge/documents", async (route) => {
     if (route.request().method() === "GET") {
       await route.fulfill({ json: [] });

@@ -1,4 +1,5 @@
 import { POST } from "./route";
+jest.mock("../../../lib/server-auth", () => ({ bearerHeaders: jest.fn(async (extra) => ({ Authorization: "Bearer test-token", ...(extra ?? {}) })) }));
 
 describe("chat gateway", () => {
   afterEach(() => jest.restoreAllMocks());

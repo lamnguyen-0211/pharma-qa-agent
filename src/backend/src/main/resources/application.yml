@@ -16,6 +16,11 @@ spring:
     password: ${DATABASE_PASSWORD:postgres}
   flyway:
     enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER:http://127.0.0.1:8081/realms/pharma-manager}
 management:
   endpoints:
     web:
@@ -27,3 +32,5 @@ management:
         enabled: true
 ai:
   backend-url: ${AI_BACKEND_URL:http://127.0.0.1:8000}
+pharma:
+  consent-version: ${CONSENT_VERSION:2026-07-27}

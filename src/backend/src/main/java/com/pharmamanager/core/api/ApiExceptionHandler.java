@@ -7,6 +7,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(com.pharmamanager.core.consent.ConsentRequiredException.class)
+    @ResponseStatus(HttpStatus.PRECONDITION_REQUIRED)
+    public ErrorResponse consentRequired(com.pharmamanager.core.consent.ConsentRequiredException exception) {
+        return new ErrorResponse("CONSENT_REQUIRED:" + exception.getMessage());
+    }
     @ExceptionHandler(BusinessSessionNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse businessSessionNotFound(BusinessSessionNotFoundException ignored) {

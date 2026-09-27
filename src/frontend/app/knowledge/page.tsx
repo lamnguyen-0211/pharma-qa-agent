@@ -53,12 +53,20 @@ export default function KnowledgePage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let active = true;
     async function loadDocuments() {
       try {
+        const profileResponse = await fetch("/api/me");
+        const profile = await profileResponse.json() as { roles?: string[]; consentAccepted?: boolean };
+        if (!profileResponse.ok) throw new Error("Sign in required.");
+        if (!profile.consentAccepted) throw new Error("Accept workspace consent before opening knowledge documents.");
+        const isAdmin = profile.roles?.includes("PHARMA_ADMIN") ?? false;
+        if (active) setAuthorized(isAdmin);
+        if (!isAdmin) throw new Error("You do not have permission to manage knowledge documents.");
         const response = await fetch("/api/knowledge/documents");
         const data = await response.json() as unknown;
         if (!response.ok || !Array.isArray(data)) throw new Error(errorMessage(data));
@@ -76,6 +84,8 @@ export default function KnowledgePage() {
       active = false;
     };
   }, []);
+
+  if (authorized === false) return <main className="auth-state"><h1>Access restricted</h1><p>You do not have permission to manage approved documents.</p><Link className="back-link" href="/">← Back to chat</Link></main>;
 
   function updateField(name: keyof UploadFields, value: string) {
     setFields((current) => ({ ...current, [name]: value }));

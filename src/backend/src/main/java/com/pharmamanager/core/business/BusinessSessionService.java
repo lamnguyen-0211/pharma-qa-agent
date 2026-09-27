@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import com.pharmamanager.core.security.AuthenticatedIdentity;
 
 @Service
 public class BusinessSessionService {
@@ -44,6 +45,11 @@ public class BusinessSessionService {
     }
 
     @Transactional
+    public UserResponse ensureUser(AuthenticatedIdentity identity) {
+        return createUser(new UserRequest(identity.subject(), identity.displayName()));
+    }
+
+    @Transactional
     public BusinessSessionResponse createBusinessSession(BusinessSessionRequest request) {
         Boolean userExists = jdbc.queryForObject(USER_EXISTS, Boolean.class, request.userId());
         if (!Boolean.TRUE.equals(userExists)) {
@@ -54,6 +60,12 @@ public class BusinessSessionService {
         OffsetDateTime now = OffsetDateTime.now();
         jdbc.update(INSERT_SESSION, id, request.userId(), "ACTIVE", now, now);
         return new BusinessSessionResponse(id, request.userId(), "ACTIVE", now, now);
+    }
+
+    @Transactional
+    public BusinessSessionResponse createBusinessSessionFor(AuthenticatedIdentity identity) {
+        UserResponse user = ensureUser(identity);
+        return createBusinessSession(new BusinessSessionRequest(user.id()));
     }
 
     public BusinessSessionResponse getBusinessSession(String id) {
@@ -71,5 +83,11 @@ public class BusinessSessionService {
         } catch (EmptyResultDataAccessException exception) {
             throw new BusinessSessionNotFoundException(id);
         }
+    }
+
+    public BusinessSessionResponse requireOwnedSession(String id, AuthenticatedIdentity identity) {
+        BusinessSessionResponse session = requireSession(id);
+        if (!session.userId().equals(ensureUser(identity).id())) throw new BusinessSessionNotFoundException(id);
+        return session;
     }
 }

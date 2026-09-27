@@ -1,4 +1,5 @@
 const backendUrl = process.env.CORE_API_URL ?? "http://127.0.0.1:8080";
+import { bearerHeaders } from "../../../../lib/server-auth";
 const knowledgeUrl = `${backendUrl}/api/v1/knowledge/documents`;
 const MAX_UPLOAD_BYTES = 10_485_760;
 const ACCEPTED_EXTENSIONS = [".pdf", ".txt", ".md"];
@@ -19,9 +20,12 @@ function unavailable() {
 }
 
 export async function GET() {
+  const headers = await bearerHeaders();
+  if (!headers) return Response.json({ error: "Sign in required." }, { status: 401 });
   try {
     const response = await fetch(knowledgeUrl, {
       method: "GET",
+      headers,
       signal: AbortSignal.timeout(60_000),
     });
     return relay(response);
@@ -44,10 +48,13 @@ export async function POST(request: Request) {
     if (!ACCEPTED_EXTENSIONS.some((extension) => lowerName.endsWith(extension))) {
       return Response.json({ error: "Use a PDF, TXT, or Markdown document." }, { status: 415 });
     }
+    const headers = await bearerHeaders();
+    if (!headers) return Response.json({ error: "Sign in required." }, { status: 401 });
 
     const response = await fetch(knowledgeUrl, {
       method: "POST",
       body,
+      headers,
       signal: AbortSignal.timeout(60_000),
     });
     return relay(response);

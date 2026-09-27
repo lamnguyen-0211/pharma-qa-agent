@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/v1/knowledge/documents")
@@ -23,6 +24,7 @@ public class KnowledgeDocumentController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('PHARMA_ADMIN')")
     public JsonNode upload(
             @RequestPart("file") MultipartFile file,
             @RequestParam MultiValueMap<String, String> metadata) throws IOException {
@@ -30,6 +32,7 @@ public class KnowledgeDocumentController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('PHARMA_ADMIN')")
     public JsonNode list() {
         return service.list();
     }

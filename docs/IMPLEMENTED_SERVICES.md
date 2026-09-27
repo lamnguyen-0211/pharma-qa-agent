@@ -69,6 +69,10 @@ Endpoints:
 - `POST /api/v1/business-sessions`
 - `GET /api/v1/business-sessions/{id}`
 - `POST /api/v1/chat`
+- `GET /api/v1/me`
+- `POST /api/v1/me/consent`
+
+Spring validates Keycloak JWT issuer/signature/expiry, maps `PHARMA_USER` and `PHARMA_ADMIN` realm roles, upserts the OIDC subject into `app_user`, records consent in `user_consent`, and scopes business-session access to the authenticated subject. Knowledge document list/upload requires `PHARMA_ADMIN`.
 
 ## 3. Next.js chat gateway
 
